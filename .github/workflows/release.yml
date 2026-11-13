@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (used verbatim as the published version), e.g. v1.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build jar and publish to Clojars
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Clojure CLI
+        uses: DeLaGuardo/setup-clojure@13.7.0
+        with:
+          cli: latest
+
+      - name: Resolve version from tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          echo "VERSION=$RELEASE_TAG" >> "$GITHUB_ENV"
+          echo "Publishing version: $RELEASE_TAG"
+
+      - name: Validate version format
+        run: |
+          if ! [[ "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            echo "::error::Tag '$VERSION' is not a valid Maven/Clojars version (must match ^[A-Za-z0-9][A-Za-z0-9._-]*$)"
+            exit 1
+          fi
+
+      - name: Build jar
+        run: clojure -T:build jar :version \"$VERSION\"
+
+      - name: Publish to Clojars
+        env:
+          CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
+          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
+        run: |
+          clojure -X:deploy \
+            :pom-file \"target/pom.xml\" \
+            :artifact \"target/java-http-$VERSION.jar\" \
+            :sign-releases? false
