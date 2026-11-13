@@ -12,7 +12,12 @@
   (let [jar-file (format "target/%s-%s.jar" (name lib) version)]
     (b/write-pom {:target "target" :lib lib :version version
                   :basis basis
-                  :pom-data [[:licenses
+                  :scm {:url "https://github.com/martinverup/java-http"
+                        :connection "scm:git:git://github.com/martinverup/java-http.git"
+                        :developerConnection "scm:git:ssh://git@github.com/martinverup/java-http.git"
+                        :tag version}
+                  :pom-data [[:url "https://github.com/martinverup/java-http"]
+                             [:licenses
                               [:license
                                [:name "MIT License"]
                                [:url "https://opensource.org/licenses/MIT"]]]]})
